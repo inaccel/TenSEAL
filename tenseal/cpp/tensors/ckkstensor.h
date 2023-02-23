@@ -142,6 +142,8 @@ class CKKSTensor : public EncryptedTensor<double, shared_ptr<CKKSTensor>>,
 
     enum class OP { ADD, SUB, MUL };
     void perform_op(seal::Ciphertext& ct, seal::Ciphertext other, OP op);
+    void perform_op(seal::Ciphertext** ct, seal::Ciphertext** other,
+                    size_t size, OP op);
     void perform_plain_op(seal::Ciphertext& ct, seal::Plaintext other, OP op);
     shared_ptr<CKKSTensor> op_inplace(const shared_ptr<CKKSTensor>& operand,
                                       OP op);

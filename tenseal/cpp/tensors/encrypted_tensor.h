@@ -196,6 +196,11 @@ class EncryptedTensor {
         if (!this->tenseal_context()->auto_relin()) return;
         for (auto& ct : cts) auto_relin(ct);
     }
+    void auto_relin(Ciphertext** ct, size_t batch_size) {
+        if (!this->tenseal_context()->auto_relin()) return;
+        this->tenseal_context()->evaluator->relinearize_inplace(
+            ct, batch_size, *this->tenseal_context()->relin_keys());
+    }
     /**
      * Rescale the ciphertext, if the context has automatic rescaling enabled.
      **/

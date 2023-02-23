@@ -213,6 +213,39 @@ void CKKSTensor::perform_op(seal::Ciphertext& ct, seal::Ciphertext other,
     }
 }
 
+void CKKSTensor::perform_op(seal::Ciphertext** ct, seal::Ciphertext** other,
+                            size_t size, OP op) {
+    for (size_t i = 0; i < size; i++) {
+        this->auto_same_mod(*other[i], *ct[i]);
+    }
+    switch (op) {
+        case OP::ADD:
+            for (size_t i = 0; i < size; i++) {
+                this->tenseal_context()->evaluator->add_inplace(*ct[i],
+                                                                *other[i]);
+            }
+            break;
+        case OP::SUB:
+            for (size_t i = 0; i < size; i++) {
+                this->tenseal_context()->evaluator->sub_inplace(*ct[i],
+                                                                *other[i]);
+            }
+            break;
+        case OP::MUL:
+            for (size_t i = 0; i < size; i++) {
+                this->tenseal_context()->evaluator->multiply_inplace(*ct[i],
+                                                                     *other[i]);
+            }
+            this->auto_relin(ct, size);
+            for (size_t i = 0; i < size; i++) {
+                this->auto_rescale(*ct[i]);
+            }
+            break;
+        default:
+            throw invalid_argument("operation not defined");
+    }
+}
+
 void CKKSTensor::perform_plain_op(seal::Ciphertext& ct, seal::Plaintext other,
                                   OP op) {
     this->auto_same_mod(other, ct);
@@ -251,10 +284,16 @@ shared_ptr<CKKSTensor> CKKSTensor::op_inplace(
         operand = this->broadcast_or_throw(operand);
     }
 
+    vector<Ciphertext*> this_data(this->_data.flat_size());
+    vector<Ciphertext*> operand_data(operand->_data.flat_size());
     task_t worker_func = [&](size_t start, size_t end) -> bool {
-        for (size_t i = start; i < end; i++) {
-            this->perform_op(this->_data.flat_ref_at(i),
-                             operand->_data.flat_ref_at(i), op);
+        if (start < end) {
+            for (size_t i = start; i < end; i++) {
+                this_data[i] = &(this->_data.flat_ref_at(i));
+                operand_data[i] = &(operand->_data.flat_ref_at(i));
+            }
+            this->perform_op(&this_data[start], &operand_data[start],
+                             end - start, op);
         }
         return true;
     };
@@ -558,6 +597,11 @@ shared_ptr<CKKSTensor> CKKSTensor::matmul_inplace(
     task_t worker_func = [&](size_t start, size_t end) -> bool {
         vector<Ciphertext> to_sum;
         to_sum.resize(this_shape[1]);
+        vector<Ciphertext> other_arr;
+        other_arr.resize(this_shape[1]);
+        vector<Ciphertext*> this_data(this_shape[1]);
+        vector<Ciphertext*> other_data(this_shape[1]);
+
         for (size_t i = start; i < end; i++) {
             auto evaluator = this->tenseal_context()->evaluator;
             size_t row = i / new_shape[1];
@@ -565,8 +609,12 @@ shared_ptr<CKKSTensor> CKKSTensor::matmul_inplace(
             // inner product
             for (size_t j = 0; j < this_shape[1]; j++) {
                 to_sum[j] = this->_data.at({row, j});
-                this->perform_op(to_sum[j], other->_data.at({j, col}), OP::MUL);
+                other_arr[j] = other->_data.at({j, col});
+                this_data[j] = to_sum.data() + j;
+                other_data[j] = other_arr.data() + j;
             }
+            this->perform_op(this_data.data(), other_data.data(), this_shape[1],
+                             OP::MUL);
             Ciphertext acc(*this->tenseal_context()->seal_context(),
                            to_sum[0].parms_id());
             evaluator->add_many(to_sum, acc);
