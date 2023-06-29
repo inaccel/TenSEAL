@@ -6,7 +6,7 @@ set(SEAL_USE_MSGSL ON)
 FetchContent_Declare(
   com_microsoft_seal
   GIT_REPOSITORY https://github.com/inaccel/SEAL
-  GIT_TAG        v4.0.0 #v4.0.0
+  GIT_TAG        v4.0.0-xcl2 #v4.0.0-xcl2
 )
 FetchContent_MakeAvailable(com_microsoft_seal)
 

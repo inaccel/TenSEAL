@@ -27,7 +27,13 @@ pybind11_add_module(_tenseal_cpp ${SEALAPI_SOURCES} ${SOURCES} ${TENSEAL_BASEDIR
 target_include_directories(_tenseal_cpp PUBLIC ${com_xtensorstack_xtensor_INCLUDE_DIRS})
 
 target_link_libraries(_sealapi_cpp PRIVATE seal)
+target_link_directories(_sealapi_cpp PUBLIC /opt/xilinx/xrt/lib)
+target_link_libraries(_sealapi_cpp PUBLIC xilinxopencl)
 target_link_libraries(_tenseal_cpp PRIVATE seal xtensor)
+target_link_directories(_tenseal_cpp PUBLIC /opt/xilinx/xrt/lib)
+target_link_libraries(_tenseal_cpp PUBLIC xilinxopencl)
 target_link_libraries(tenseal PRIVATE seal xtensor)
+target_link_directories(tenseal PUBLIC /opt/xilinx/xrt/lib)
+target_link_libraries(tenseal PUBLIC xilinxopencl)
 target_link_libraries(tenseal PRIVATE tenseal_proto)
 target_link_libraries(_tenseal_cpp PRIVATE tenseal_proto)
